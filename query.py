@@ -23,17 +23,16 @@ def query1(minFare, maxFare):
         An array of documents.
     """
     docs = db.taxi.find(
-        """
-            {
-                $and :
-                    [ 
-                        {fare_amount : {$gte : 20}},
-                        {fare_amount : {$gte : 40}}
-                    ]
-            }
-        """
+        {
+            "fare_amount": {"$gte": minFare, "$lte": maxFare}
+        },
+        {
+            '_id': 0,
+            'pickup_longitude': 1,
+            'pickup_latitude': 1,
+            'fare_amount': 1
+        }
     )
-
     result = [doc for doc in docs]
     return result
 
@@ -79,15 +78,17 @@ def query2(textSearch, minReviews):
 
 
 def query3():
-    """ Groups airbnbs by neighbourhood_group and finds average price of each neighborhood_group sorted in descending order.  
+    """ Groups airbnbs by neighbourhood_group and finds average price of each neighbourhood_group sorted in descending order.  
 
     Returns:
         An array of documents.
     """
     docs = db.airbnb.aggregate(
-        # TODO: implement me
+        [
+            {"$group": {"_id": "$neighbourhood_group", "total": {"$avg": "$price"}}},
+            {"$sort": {"total": -1}}
+        ]
     )
-
     result = [doc for doc in docs]
     return result
 
@@ -103,7 +104,25 @@ def query4():
         An array of documents.
     """
     docs = db.taxi.aggregate(
-        # TODO: implement me
+        [
+            {
+                "$group": {"_id": {"$hour": "$pickup_datetime"},
+                           "avg_fare": {"$avg": "$fare_amount"},
+                           "avg_dist": {"$avg":
+                                                {"$add":
+                                                    [
+                                                        {"$abs":
+                                                            {"$subtract": ["$pickup_longitude", "$dropoff_longitude"]}
+                                                        },
+                                                        {"$abs":
+                                                            {"$subtract": ["$pickup_latitude", "$dropoff_latitude"]}
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                          }
+            }
+        ]
     )
     result = [doc for doc in docs]
     return result
@@ -132,3 +151,9 @@ def query5():
     )
     result = [doc for doc in docs]
     return result
+
+if __name__ == "__main__":
+    db = MongoClient().test
+    # print(query1(20, 21))
+    # print(query3())
+    print(query4())
